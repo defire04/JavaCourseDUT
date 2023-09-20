@@ -1,7 +1,7 @@
 package org.example.controller.book;
 
 import org.example.data.dto.book.BookDTO;
-import org.example.data.mapper.book.BookMapper;
+import org.example.data.mapper.item.book.BookMapper;
 import org.example.data.service.book.BookService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

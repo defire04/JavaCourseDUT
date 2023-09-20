@@ -2,8 +2,8 @@ package org.example.controller;
 
 import org.example.controller.book.BookController;
 import org.example.data.dto.book.BookDTO;
-import org.example.data.mapper.book.BookMapper;
-import org.example.data.model.book.Book;
+import org.example.data.mapper.item.book.BookMapper;
+import org.example.data.model.item.book.Book;
 import org.example.data.service.book.BookService;
 import org.junit.Test;
 import org.junit.runner.RunWith;

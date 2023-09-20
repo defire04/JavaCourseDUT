@@ -1,8 +1,8 @@
-package org.example.data.mapper.book;
+package org.example.data.mapper.item.book;
 
 import org.example.data.dto.book.BookDTO;
 import org.example.data.mapper.FieldsUpdaterMapper;
-import org.example.data.model.book.Book;
+import org.example.data.model.item.book.Book;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 

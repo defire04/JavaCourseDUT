@@ -2,9 +2,9 @@ package org.example.data.service.book;
 
 import org.example.data.exception.book.BookNotFoundException;
 import org.example.data.exception.book.BookWithThisISBNAlreadyCreatedException;
-import org.example.data.mapper.book.BookMapper;
-import org.example.data.model.book.Book;
-import org.example.data.repository.book.BookRepository;
+import org.example.data.mapper.item.book.BookMapper;
+import org.example.data.model.item.book.Book;
+import org.example.data.repository.item.book.BookRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

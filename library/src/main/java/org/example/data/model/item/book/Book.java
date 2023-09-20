@@ -1,8 +1,9 @@
-package org.example.data.model.book;
+package org.example.data.model.item.book;
 
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.data.model.item.Item;
 
 @Data
 @Entity
@@ -10,15 +11,11 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Book {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+public class Book extends Item {
+
     private String name;
     private String author;
     private long ISBN;
     private int yearOfPublication;
-
-
 
 }
