@@ -1,4 +1,4 @@
-package org.example.data.exception.book;
+package org.example.data.exception.item.book;
 
 public class BookNotFoundException extends BookException{
     public BookNotFoundException() {

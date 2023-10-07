@@ -12,8 +12,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface PatronRepository extends JpaRepository<Patron, Integer> {
+public interface PatronRepository extends JpaRepository<Patron, UUID> {
 
 }

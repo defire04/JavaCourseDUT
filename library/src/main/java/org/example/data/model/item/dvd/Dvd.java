@@ -1,11 +1,9 @@
 package org.example.data.model.item.dvd;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.example.data.model.item.Item;
 
 @Data
@@ -14,6 +12,8 @@ import org.example.data.model.item.Item;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@EqualsAndHashCode(callSuper = true)
 public class Dvd extends Item {
+    @Column(name = "duration")
     private int duration;
 }
