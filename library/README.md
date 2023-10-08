@@ -301,7 +301,7 @@ public interface IManageable {
 
 ```
 
-Then implements this methods in Library
+Then implements these methods in Library
 
 ```java
 @Service
