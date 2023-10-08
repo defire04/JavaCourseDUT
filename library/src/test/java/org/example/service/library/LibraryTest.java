@@ -42,8 +42,6 @@ public class LibraryTest {
     @Transactional
     public void testAddBook() {
         Book book = new Book(1L);
-        book.setTitle("Book Title");
-        book.setAuthor("Book Author");
 
         Item addedItem = library.add(book);
 
@@ -56,7 +54,6 @@ public class LibraryTest {
     @Transactional
     public void testAddDvd() {
         Dvd dvd = new Dvd();
-        dvd.setTitle("DVD Title");
         dvd.setDuration(10);
 
         Item addedItem = library.add(dvd);
