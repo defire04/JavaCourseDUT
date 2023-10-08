@@ -20,9 +20,6 @@ public class BookService extends BaseItemService<Book, BookRepository> {
         return getRepository().findByISBN(isbn).orElseThrow(BookNotFoundException::new);
     }
 
-
-
-
     @Transactional
     @Override
     public Book save(Book book) {

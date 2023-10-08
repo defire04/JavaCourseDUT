@@ -1,11 +1,9 @@
 package org.example.data.service.library;
 
-import org.example.data.model.item.IItem;
 import org.example.data.model.item.Item;
 import org.example.data.model.item.book.Book;
 import org.example.data.model.item.dvd.Dvd;
 import org.example.data.model.user.Patron;
-import org.example.data.repository.user.PatronRepository;
 import org.example.data.service.item.book.BookService;
 import org.example.data.service.item.dvd.DvdService;
 import org.example.data.service.patron.PatronService;
@@ -82,16 +80,14 @@ public class Library implements IManageable {
 
     //4. Видавати предмет читачеві.
     public void lendItem(Patron patron, Item item) {
-        item.setBorrowed(true);
+        item.borrowItem();
         patronService.addItem(patron, item);
     }
 
     //5. Повертати предмет у бібліотеку.
     public void returnItem(Patron patron, Item item) {
-        item.setBorrowed(false);
+        item.returnItem();
         patronService.returnItem(patron, item);
     }
-
-
 }
 

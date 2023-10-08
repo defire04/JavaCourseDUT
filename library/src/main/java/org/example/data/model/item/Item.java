@@ -8,7 +8,6 @@ import org.example.data.model.BaseEntity;
 import org.example.data.model.user.Patron;
 
 
-//@MappedSuperclass
 @Getter
 @Setter
 @Entity
