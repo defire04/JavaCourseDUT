@@ -9,3 +9,5 @@ https://github.com/defire04/JavaCourseDUT/tree/lab1
 ## Laboratory work 2
 https://github.com/defire04/JavaCourseDUT/tree/lab2
 
+## Laboratory work 3
+https://github.com/defire04/JavaCourseDUT/tree/lb3
