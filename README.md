@@ -1,179 +1,246 @@
-# Laboratory work 5
+# Laboratory work 6
 
 ## Program Functionality
 
-With this laboratory robot, I implemented a reliable and rack-mounted program that simulates the system of a bank
-system. This system will include account management, financial transactions and settlement functions.
+This system, implemented in the Java programming language, provides functionality for creating accounts, carrying out financial transactions and reconciling accounts. The program handles different types of errors and uses specialized exception classes to handle specific error scenarios, providing robustness against unforeseen situations. The implementation also uses the principle of exception propagation to efficiently manage exceptions in the program.
 
-## Phase 1: Create class BankAccount
+## Phase 1: Array Initialization
 
 ```java
 
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-@ToString
-@Getter
-public class BankAccount {
-
-    @NonNull
-    private Long accountNumber;
-
-    @NonNull
-    private String accountName;
-
-    @NonNull
-    private Double balance;
-
-    public void deposit(double amount) {
-        balance += amount;
-    }
-
-    public void withdraw(double amount) {
-        balance -= amount;
-    }
-
-    public void getAccountSummary() {
-
-        System.out.println("=======================" +
-                "\nAccount Number: " + accountNumber +
-                "\nAccount Name: " + accountName +
-                "\nBalance: " + balance);
-    }
-}
+public static final int[][][] CINEMA = new int[5][10][20];
 
 ```
 
-## Phase 2: Create exceptions
+## Phase 2: Seat Reservation
 
 ```java
-public class AccountNotFoundException extends Exception {
-    public AccountNotFoundException() {
-        super("Account not found!");
-    }
 
-    public AccountNotFoundException(String message) {
-        super(message);
-    }
-}
+    public static void bookSeats(int hallNumber, int row, int[] seats) {
+        System.out.println("Booking seats:");
 
-public class InsufficientFundsException extends Exception {
-    public InsufficientFundsException() {
-        super("Insufficient funds!");
-    }
+        if (hallNumber >= 1 && hallNumber <= CINEMA.length) {
+            int hallIndex = hallNumber - 1;
 
-    public InsufficientFundsException(String message) {
-        super(message);
-    }
-}
+            if (row >= 1 && row <= CINEMA[hallIndex].length) {
+                int rowIndex = row - 1;
 
-public class NegativeAmountException extends Exception {
-    public NegativeAmountException() {
-        super("Negative amount!");
-    }
+                for (int seat : seats) {
+                    if (seat >= 1 && seat <= CINEMA[hallIndex][rowIndex].length) {
+                        int seatIndex = seat - 1;
 
-    public NegativeAmountException(String message) {
-        super(message);
+                        if (CINEMA[hallIndex][rowIndex][seatIndex] == 0) {
+                            CINEMA[hallIndex][rowIndex][seatIndex] = 1;
+                            System.out.println("Seat " + hallNumber + "-" + row + "-" + seat + " booked");
+                        } else {
+                            System.out.println("Seat " + hallNumber + "-" + row + "-" + seat + " already booked");
+                        }
+                    } else {
+                        System.out.println("Invalid seat " + hallNumber + "-" + row + "-" + seat);
+                    }
+                }
+            } else {
+                System.out.println("Invalid row " + hallNumber + "-" + row);
+            }
+        } else {
+            System.out.println("Invalid hall " + hallNumber);
+        }
     }
-}
 
 ```
 
-## Phase 3: Create class Bank
+## Phase 3: Canceling a Reservation
 
 ```java
 
-public class Bank {
-    private final List<BankAccount> bankAccountList = new ArrayList<>();
 
-    private static long number = 1;
+    public static void cancelBooking(int hallNumber, int row, int[] seats) {
+        System.out.println("Canceling booked seats:");
 
-    public BankAccount createAccount(String accountName, double initialDeposit) throws NegativeAmountException {
+        if (hallNumber >= 1 && hallNumber <= CINEMA.length) {
+            int hallIndex = hallNumber - 1;
 
-        if (initialDeposit < 0) {
-            throw new NegativeAmountException();
+            if (row >= 1 && row <= CINEMA[hallIndex].length) {
+                int rowIndex = row - 1;
+
+                for (int seat : seats) {
+                    if (seat >= 1 && seat <= CINEMA[hallIndex][rowIndex].length) {
+                        int seatIndex = seat - 1;
+
+                        if (CINEMA[hallIndex][rowIndex][seatIndex] == 1) {
+                            CINEMA[hallIndex][rowIndex][seatIndex] = 0;
+                            System.out.println("Booking for seat " + hallNumber + "-" + row + "-" + seat + " canceled");
+                        } else {
+                            System.out.println("Seat " + hallNumber + "-" + row + "-" + seat + " was not booked");
+                        }
+                    } else {
+                        System.out.println("Invalid seat " + hallNumber + "-" + row + "-" + seat);
+                    }
+                }
+            } else {
+                System.out.println("Invalid row " + hallNumber + "-" + row);
+            }
+        } else {
+            System.out.println("Invalid hall " + hallNumber);
         }
-
-        BankAccount bankAccount = BankAccount.builder()
-                .accountNumber(number++)
-                .balance(initialDeposit)
-                .accountName(accountName)
-                .build();
-        bankAccountList.add(bankAccount);
-
-        return bankAccount;
     }
 
-
-    public BankAccount findAccount(long accountNumber) throws AccountNotFoundException {
-        return bankAccountList.stream()
-                .filter(bankAccount -> bankAccount.getAccountNumber() == accountNumber)
-                .findFirst()
-                .orElseThrow(AccountNotFoundException::new);
-    }
-
-
-    public void transferMoney(long fromAccountNumber, long toAccountNumber, double amount) throws InsufficientFundsException, AccountNotFoundException {
-        BankAccount fromBankAccount = findAccount(fromAccountNumber);
-        BankAccount toBankAccount = findAccount(toAccountNumber);
-
-
-        if (fromBankAccount.getBalance() < amount) {
-            throw new InsufficientFundsException();
-        }
-
-        fromBankAccount.withdraw(amount);
-
-
-        toBankAccount.deposit(amount);
-    }
-}
 
 ```
 
-## Phase 4: Created test classes where you simulated different scenarios to test exception handling.
+## Phase 4: Availability Check
 
 ```java
-public class Main {
-    public static void main(String[] args) {
 
-        Bank privatBank = new Bank();
+    public static void checkAvailability(int screen, int numSeats) {
+        System.out.println("Checking seat availability for Screen " + screen + ":");
 
-        BankAccount johnDoe = null;
-        BankAccount janeSmith = null;
+        if (screen >= 1 && screen <= CINEMA.length) {
+            int hallIndex = screen - 1;
 
-        try {
-            johnDoe = privatBank.createAccount("John Doe", 1);
-            janeSmith = privatBank.createAccount("Jane Smith", 10);
+            for (int row = 0; row < CINEMA[hallIndex].length; row++) {
+                int availableSeats = 0;
 
-            BankAccount badUser = privatBank.createAccount("Andrew", -10);
-        } catch (NegativeAmountException e) {
-            System.out.println("Cant create user because: " + e.getMessage());
+                for (int seat = 0; seat < CINEMA[hallIndex][row].length; seat++) {
+                    if (CINEMA[hallIndex][row][seat] == 0) {
+                        availableSeats++;
+
+                        if (availableSeats == numSeats) {
+                            System.out.println("Available seats: Row " + (row + 1) + ", Seats " + (seat - numSeats + 2) + " to " + (seat + 1));
+                            return;
+                        }
+                    } else {
+                        availableSeats = 0; // Reset the count if a booked seat is encountered
+                    }
+                }
+            }
+
+            System.out.println("Sorry, not enough consecutive available seats found.");
+        } else {
+            System.out.println("Invalid screen number " + screen);
         }
-        assert johnDoe != null;
-        assert janeSmith != null;
-
-        try {
-            privatBank.transferMoney(3, janeSmith.getAccountNumber(), 5);
-        } catch (InsufficientFundsException | AccountNotFoundException e) {
-            System.out.println("Cant transfer money because: " + e.getMessage());
-        }
-
-        try {
-            privatBank.transferMoney(johnDoe.getAccountNumber(), janeSmith.getAccountNumber(), 5);
-        } catch (InsufficientFundsException | AccountNotFoundException e) {
-            System.out.println("Cant transfer money because: " + e.getMessage());
-        }
-
-        johnDoe.getAccountSummary();
-        janeSmith.getAccountSummary();
     }
 
-}
 
+```
+
+## Phase 5: Printing a Seating Arrangement
+
+```java
+
+
+    
+    private static void printCinema() {
+        System.out.println("Seats in the cinema:");
+
+        for (int hall = 0; hall < CINEMA.length; hall++) {
+            System.out.println("Hall " + (hall + 1) + ":");
+
+            for (int row = 0; row < CINEMA[hall].length; row++) {
+                System.out.print("Row " + (row + 1) + ": ");
+
+                for (int seat = 0; seat < CINEMA[hall][row].length; seat++) {
+                    System.out.print(CINEMA[hall][row][seat] + " ");
+                }
+
+                System.out.println();
+            }
+
+            System.out.println();
+        }
+    }
+    private static void printSeatingArrangement(int hallNumber) {
+        System.out.println("Seating arrangement for Hall " + hallNumber + ":");
+
+        if (hallNumber >= 1 && hallNumber <= CINEMA.length) {
+            int hallIndex = hallNumber - 1;
+
+            for (int row = 0; row < CINEMA[hallIndex].length; row++) {
+                System.out.print("Row " + (row + 1) + ": ");
+
+                for (int seat = 0; seat < CINEMA[hallIndex][row].length; seat++) {
+                    char status = (CINEMA[hallIndex][row][seat] == 0) ? 'O' : 'X';
+                    System.out.print(status + " ");
+                }
+
+                System.out.println();
+            }
+        } else {
+            System.out.println("Invalid hall number " + hallNumber);
+        }
+    }
+
+
+
+```
+
+## Phase 6: Find best available
+
+```java
+    private static List<Integer> findBestAvailable(int hallNumber, int numSeats) {
+        if (hallNumber >= 1 && hallNumber <= CINEMA.length) {
+            int hallIndex = hallNumber - 1;
+
+            for (int row = 0; row < CINEMA[hallIndex].length; row++) {
+                int availableSeats = 0;
+                int startSeat = -1;
+
+                for (int seat = 0; seat < CINEMA[hallIndex][row].length; seat++) {
+                    if (CINEMA[hallIndex][row][seat] == 0) {
+                        if (startSeat == -1) {
+                            startSeat = seat;
+                        }
+
+                        availableSeats++;
+
+                        if (availableSeats == numSeats) {
+                            return List.of(row + 1, startSeat + 1);
+                        }
+                    } else {
+                        availableSeats = 0;
+                        startSeat = -1;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+    
+
+```
+
+## Phase 7: Auto book
+```java
+
+
+
+    public static void autoBook(int hallNumber, int numSeats) {
+        System.out.println("Auto-booking " + numSeats + " best available seats:");
+
+        List<Integer> bestAvailable = findBestAvailable(hallNumber, numSeats);
+
+        if (bestAvailable != null) {
+            int rowToBook = bestAvailable.get(0);
+            int startSeatToBook = bestAvailable.get(1);
+
+            bookSeats(hallNumber, rowToBook, generateSeatArray(startSeatToBook, numSeats));
+
+            System.out.println("Auto-booked seats: Hall " + hallNumber + ", Row " + rowToBook + ", Seats " + startSeatToBook + " to " + (startSeatToBook + numSeats - 1));
+        } else {
+            System.out.println("Not enough consecutive available seats to auto-book.");
+        }
+    }
+
+    private static int[] generateSeatArray(int startSeat, int numSeats) {
+        int[] seats = new int[numSeats];
+        for (int i = 0; i < numSeats; i++) {
+            seats[i] = startSeat + i;
+        }
+        return seats;
+    }
 ```
 
 
 # Conclusion
 
-Exception handling in Java includes the use of try, catch constructs to efficiently detect, handle, and recover from exceptions. Creating specialized exception classes allows you to precisely identify and handle specific error scenarios. Exception propagation is important for passing exceptions up the call, allowing for centralized and efficient exception management in the application.
+In this lab, we developed a Java program using multidimensional arrays and complex algorithms to solve a real-world problem. We have mastered working with arrays, performed efficient operations such as sorting and filtering, and successfully applied algorithms to optimize the processing of large volumes of data
