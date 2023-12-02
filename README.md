@@ -1,101 +1,179 @@
-# Laboratory work 4.2 (Hard)
+# Laboratory work 5
 
 ## Program Functionality
 
-In a galaxy far, far away there are messages encrypted in strange patterns that needed decoding. Men was tasked with writing a program that decodes these messages.
+With this laboratory robot, I implemented a reliable and rack-mounted program that simulates the system of a bank
+system. This system will include account management, financial transactions and settlement functions.
 
-An encrypted message consists of words separated by delimiters, and each word can be encoded using different methods.
-
-## Phase 1: Create first decoding method 
-```java
- public static String vowelSubstitutions(String input) {
-    Map<String, String> vowels = new HashMap<>();
-
-    vowels.put("1", "a");
-    vowels.put("2", "e");
-    vowels.put("3", "i");
-    vowels.put("4", "o");
-    vowels.put("5", "u");
-
-
-    return Arrays.stream(input.split("")).map(letter -> vowels.getOrDefault(letter, letter)).collect(Collectors.joining());
-}
-```
-
-## Phase 2: Create second decoding method
+## Phase 1: Create class BankAccount
 
 ```java
-public static String consonantSubstitution(String input) {
-    List<String> consonant = List.of("bcdfghjklmnpqrstvwxyz".split(""));
 
-    return Arrays.stream(input.split("")).map(letter -> {
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@ToString
+@Getter
+public class BankAccount {
 
-    if (consonant.contains(letter)) {
-        return consonant.get(consonant.indexOf(letter) - 1);
+    @NonNull
+    private Long accountNumber;
+
+    @NonNull
+    private String accountName;
+
+    @NonNull
+    private Double balance;
+
+    public void deposit(double amount) {
+        balance += amount;
     }
 
-    return letter;
-    }).collect(Collectors.joining());
-}
-```
-## Phase 3: Method determining the type of decryption by word
-```java
-public static String findKindOfEncodingByWord(String input) {
+    public void withdraw(double amount) {
+        balance -= amount;
+    }
 
-    Pattern pattern = Pattern.compile("[^aeiou]+\\d+");
-    Matcher matcher = pattern.matcher(input);
+    public void getAccountSummary() {
 
-    if (matcher.find()) {
-        return "The word " + input + " is encrypted by vowel substitutions ";
-    } else {
-        return "The word " + input + " is encrypted by consonant substitution ";
+        System.out.println("=======================" +
+                "\nAccount Number: " + accountNumber +
+                "\nAccount Name: " + accountName +
+                "\nBalance: " + balance);
     }
 }
+
 ```
 
-## Phase 4: Method determining the type of decryption by message
+## Phase 2: Create exceptions
+
 ```java
-public static void findKindOfEncodingByMessage(String input) {
-    Arrays.stream(input.split(" ")).forEach(Decoder::findKindOfEncodingByWord);
+public class AccountNotFoundException extends Exception {
+    public AccountNotFoundException() {
+        super("Account not found!");
+    }
+
+    public AccountNotFoundException(String message) {
+        super(message);
+    }
 }
+
+public class InsufficientFundsException extends Exception {
+    public InsufficientFundsException() {
+        super("Insufficient funds!");
+    }
+
+    public InsufficientFundsException(String message) {
+        super(message);
+    }
+}
+
+public class NegativeAmountException extends Exception {
+    public NegativeAmountException() {
+        super("Negative amount!");
+    }
+
+    public NegativeAmountException(String message) {
+        super(message);
+    }
+}
+
 ```
 
+## Phase 3: Create class Bank
 
-## Phase 5: Created a main function to demonstrate your decoder
+```java
+
+public class Bank {
+    private final List<BankAccount> bankAccountList = new ArrayList<>();
+
+    private static long number = 1;
+
+    public BankAccount createAccount(String accountName, double initialDeposit) throws NegativeAmountException {
+
+        if (initialDeposit < 0) {
+            throw new NegativeAmountException();
+        }
+
+        BankAccount bankAccount = BankAccount.builder()
+                .accountNumber(number++)
+                .balance(initialDeposit)
+                .accountName(accountName)
+                .build();
+        bankAccountList.add(bankAccount);
+
+        return bankAccount;
+    }
+
+
+    public BankAccount findAccount(long accountNumber) throws AccountNotFoundException {
+        return bankAccountList.stream()
+                .filter(bankAccount -> bankAccount.getAccountNumber() == accountNumber)
+                .findFirst()
+                .orElseThrow(AccountNotFoundException::new);
+    }
+
+
+    public void transferMoney(long fromAccountNumber, long toAccountNumber, double amount) throws InsufficientFundsException, AccountNotFoundException {
+        BankAccount fromBankAccount = findAccount(fromAccountNumber);
+        BankAccount toBankAccount = findAccount(toAccountNumber);
+
+
+        if (fromBankAccount.getBalance() < amount) {
+            throw new InsufficientFundsException();
+        }
+
+        fromBankAccount.withdraw(amount);
+
+
+        toBankAccount.deposit(amount);
+    }
+}
+
+```
+
+## Phase 4: Created test classes where you simulated different scenarios to test exception handling.
+
 ```java
 public class Main {
     public static void main(String[] args) {
 
-        System.out.println(Decoder.vowelSubstitutions("t2st3ng"));
-        System.out.println(Decoder.consonantSubstitution("vetviph"));
-        Decoder.findKindOfEncodingByWord("vetviph");
-        Decoder.findKindOfEncodingByMessage("t2st3ng vetviph");
+        Bank privatBank = new Bank();
 
+        BankAccount johnDoe = null;
+        BankAccount janeSmith = null;
+
+        try {
+            johnDoe = privatBank.createAccount("John Doe", 1);
+            janeSmith = privatBank.createAccount("Jane Smith", 10);
+
+            BankAccount badUser = privatBank.createAccount("Andrew", -10);
+        } catch (NegativeAmountException e) {
+            System.out.println("Cant create user because: " + e.getMessage());
+        }
+        assert johnDoe != null;
+        assert janeSmith != null;
+
+        try {
+            privatBank.transferMoney(3, janeSmith.getAccountNumber(), 5);
+        } catch (InsufficientFundsException | AccountNotFoundException e) {
+            System.out.println("Cant transfer money because: " + e.getMessage());
+        }
+
+        try {
+            privatBank.transferMoney(johnDoe.getAccountNumber(), janeSmith.getAccountNumber(), 5);
+        } catch (InsufficientFundsException | AccountNotFoundException e) {
+            System.out.println("Cant transfer money because: " + e.getMessage());
+        }
+
+        johnDoe.getAccountSummary();
+        janeSmith.getAccountSummary();
     }
+
 }
+
 ```
 
-## Phase 6: Write test
-```java
-public class DecoderTest {
-
-    @Test
-    public void vowelSubstitutions(){
-       assertEquals(Decoder.vowelSubstitutions("t2st3ng"), "testing");
-    }
-
-    @Test
-    public void consonantSubstitution(){
-        assertEquals(Decoder.consonantSubstitution("vetviph"), "testing");
-    }
-
-    @Test
-    public void findKindOfEncodingByWord(){
-        assertTrue( Decoder.findKindOfEncodingByWord("vetviph").contains("consonant"));
-    }
-}
-```
 
 # Conclusion
 
-I decrypted the messages. Understood the immutable nature of String. I worked with row methods. Used regular expressions.
+Exception handling in Java includes the use of try, catch constructs to efficiently detect, handle, and recover from exceptions. Creating specialized exception classes allows you to precisely identify and handle specific error scenarios. Exception propagation is important for passing exceptions up the call, allowing for centralized and efficient exception management in the application.
