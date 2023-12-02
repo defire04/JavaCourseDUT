@@ -16,3 +16,8 @@ https://github.com/defire04/JavaCourseDUT/tree/lb3
 * 4.1 https://github.com/defire04/JavaCourseDUT/tree/lb4.1
 * 4.2 https://github.com/defire04/JavaCourseDUT/tree/lb4.2
 
+## Laboratory work 5
+https://github.com/defire04/JavaCourseDUT/tree/lb5
+
+## Laboratory work 6
+https://github.com/defire04/JavaCourseDUT/tree/lb6
