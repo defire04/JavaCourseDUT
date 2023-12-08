@@ -17,3 +17,7 @@ The lab work is distributed across GitHub branches. Each branch has its own labo
 ## [Laboratory work 6](https://github.com/defire04/JavaCourseDUT/tree/lb6)
 
 ## [Laboratory work 7](https://github.com/defire04/JavaCourseDUT/tree/lb7)
+
+## [Laboratory work 8](https://github.com/defire04/JavaCourseDUT/tree/lb8)
+
+## [Laboratory work 9](https://github.com/defire04/JavaCourseDUT/tree/lb9)
