@@ -8,6 +8,9 @@ public class Lb8Application {
 
 	public static void main(String[] args) {
 		SpringApplication.run(Lb8Application.class, args);
+
+
+
 	}
 
 }

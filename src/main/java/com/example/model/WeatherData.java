@@ -1,11 +1,9 @@
 package com.example.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 
@@ -29,15 +27,19 @@ public class WeatherData {
     private double longitude;
 
     @Column(name = "time")
-    private Long time;
+    private Date time;
 
     @Column(name = "temperature")
-    private double temperatureMean;
+    private double temperature;
 
-    public WeatherData(double latitude, double longitude, Long time, double temperatureMean) {
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.time = time;
-        this.temperatureMean = temperatureMean;
-    }
+    @Column(name = "humidity")
+    private double humidity;
+
+    @Column(name = "precipitation ")
+    private double precipitation;
+
+    @Column(name = "wind_speed")
+    private double windSpeed;
+
+
 }
