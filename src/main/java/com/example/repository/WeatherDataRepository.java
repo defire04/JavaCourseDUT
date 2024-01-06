@@ -1,9 +1,9 @@
 package com.example.repository;
 
-import com.example.model.WeatherData;
+import com.example.model.HourWeatherData;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface WeatherDataRepository extends JpaRepository<WeatherData, Long> {
+public interface WeatherDataRepository extends JpaRepository<HourWeatherData, Long> {
 }

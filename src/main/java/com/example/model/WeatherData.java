@@ -1,45 +1,37 @@
 package com.example.model;
 
-import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
 import java.util.Date;
 
-
-
-@Entity
-@Table(name = "weather_data")
 @Getter
 @Setter
 @NoArgsConstructor
-public class WeatherData {
+@ToString
+//@Builder
+public abstract class WeatherData {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Long id;
-
-    @Column(name = "latitude")
     private double latitude;
 
-    @Column(name = "longitude")
     private double longitude;
 
-    @Column(name = "time")
-    private Date time;
+    private Date date;
 
-    @Column(name = "temperature")
-    private double temperature;
+    private double averageTemperature;
 
-    @Column(name = "humidity")
-    private double humidity;
+    private double averageHumidity;
 
-    @Column(name = "precipitation ")
-    private double precipitation;
+    private double averagePrecipitation;
 
-    @Column(name = "wind_speed")
-    private double windSpeed;
+    private double averageWindSpeed;
 
-
+    public WeatherData(Date date, double averageTemperature, double averageHumidity, double averagePrecipitation, double averageWindSpeed, double latitude, double longitude) {
+        this.date = date;
+        this.averageTemperature = averageTemperature;
+        this.averageHumidity = averageHumidity;
+        this.averagePrecipitation = averagePrecipitation;
+        this.averageWindSpeed = averageWindSpeed;
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
 }
