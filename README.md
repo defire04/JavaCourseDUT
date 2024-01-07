@@ -1,349 +1,466 @@
-# Laboratory work 7
+# Laboratory work 8
 
 ## Program Functionality
 
-As part of this project, a basic backend for e-commerce was developed using Java Collections. Key functionalities include inventory management, user cart management, and order processing.
+In this lab, we explore using Java Streams to analyze global meteorological data via HTTP requests to the Meteorological
+API.
 
-## Phase 1: Class design
+## Phase 1: Interaction with the API
+
+### Make an HTTP request to the weather API to get the data.
+
 ```java
-@Data
-@Builder(toBuilder = true)
-public class Order {
-    private Integer id;
-    private Integer userId;
-    @Builder.Default
-    private Map<Product, Integer> orderDetails = new HashMap<>();
-    private double totalPrice;
 
-    public static double calculateTotalPrice(Map<Product, Integer> orderDetails) {
-        return orderDetails.entrySet().stream()
-                .mapToDouble(entry -> entry.getKey().getPrice() * entry.getValue())
-                .sum();
+@Getter
+@Setter
+public class WeatherAllDataDTO {
 
-    }
-}
-@Data
-@ToString
-@Builder
-public class Product  implements Comparable<Product> {
-    private Integer id;
-    private String name;
-    private double price;
-    private int stock;
+    private double latitude;
+    private double longitude;
+    private HourlyData hourly;
 
-    @Override
-    public int compareTo(Product otherProduct) {
-        return Double.compare(this.price, otherProduct.price);
-    }
+    @Getter
+    @Setter
+    public static class HourlyData {
+        private List<Long> time;
 
-}
-@Data
-@Builder
-public class User {
-    private Integer id;
-    private String username;
-    @Builder.Default
-    private Map<Product, Integer> cart = new HashMap<>();
-    @Builder.Default
-    private Map<Product, Integer> history = new HashMap<>();
+        @JsonProperty("temperature_2m")
+        private List<Double> temperatureList;
 
+        @JsonProperty("relative_humidity_2m")
+        private List<Double> relativeHumidityList;
 
-    public void addToCart(Product product, int quantity) {
-        cart.put(product, cart.getOrDefault(product, 0) + quantity);
-    }
+        @JsonProperty("precipitation")
+        private List<Double> precipitationList;
 
-    public void removeFromCart(Product product, int quantity) {
-        if (cart.containsKey(product)) {
-            int updatedQuantity = cart.get(product) - quantity;
-            if (updatedQuantity > 0) {
-                cart.put(product, updatedQuantity);
-            } else {
-                cart.remove(product);
-            }
-        }
-    }
+        @JsonProperty("wind_speed_10m")
+        private List<Double> windSpeedList;
 
-    public void modifyCart(Product product, int newQuantity) {
-        if (cart.containsKey(product) && newQuantity > 0) {
-            cart.put(product, newQuantity);
-        }
     }
 }
 ```
 
-## Phase 2: Electronic Commerce Platform
-
 ```java
 
-public class ECommercePlatform {
+@Configuration
+public class Lb8Config {
 
-    private final Map<Integer, User> users = new HashMap<>();
-    private final Map<Integer, Product> products = new HashMap<>();
-    private final Map<Integer, Order> orders = new HashMap<>();
-
-    private static int userCount = 0;
-    private static int productCount = 0;
-    private static int orderCount = 0;
-
-
-    public void addUser(User user) {
-        user.setId(++userCount);
-
-        if (users.containsKey(user.getId())) {
-            throw new RuntimeException("User already exist!");
-        }
-        users.put(user.getId(), user);
-    }
-
-    public void addUser(User... users) {
-        Arrays.stream(users).forEach(this::addUser);
-    }
-
-
-    public void addProduct(Product product) {
-
-        if (!products.containsKey(product.getId())) {
-            product.setId(++productCount);
-        }
-        products.put(product.getId(), product);
-    }
-
-    public void addProduct(Product... products) {
-        Arrays.stream(products).forEach(this::addProduct);
-    }
-
-
-    public void createOrder(User user) {
-
-        if (user.getCart().isEmpty()) {
-            throw new RuntimeException("User cart cant be empty for create order!");
-        }
-
-        updateStock(user.getCart());
-
-        for (Map.Entry<Product, Integer> cartEntry : user.getCart().entrySet()) {
-            Product product = cartEntry.getKey();
-            int quantity = cartEntry.getValue();
-
-            int currentQuantity = user.getHistory().getOrDefault(product, 0);
-
-            user.getHistory().put(product, currentQuantity + quantity);
-        }
-
-        Map<Product, Integer> cartCopy = new HashMap<>(user.getCart());
-        user.getCart().clear();
-
-        orders.put(++orderCount, Order.builder()
-                .id(orderCount)
-                .orderDetails(cartCopy)
-                .userId(user.getId())
-                .totalPrice(Order.calculateTotalPrice(user.getCart()))
-                .build());
-
-    }
-
-    private void updateStock(Map<Product, Integer> orderDetails) {
-        for (Map.Entry<Product, Integer> entry : orderDetails.entrySet()) {
-            Product product = entry.getKey();
-            int requestedQuantity = entry.getValue();
-
-            if (!products.containsKey(product.getId())) {
-                throw new RuntimeException("product with ID: " + product.getId() + " not found!");
-            }
-
-            Product existingProduct = products.get(product.getId());
-            int remainingStock = existingProduct.getStock() - requestedQuantity;
-
-            if (remainingStock < 0) {
-                throw new RuntimeException("Negative stock not allowed for product with ID: " + product.getId());
-            }
-
-            existingProduct.setStock(remainingStock);
-        }
-    }
-
-    public void showUsers() {
-        System.out.println("\nUsers:");
-        printMap(users);
-    }
-
-    public void showProducts() {
-        System.out.println("\nProducts:");
-        printMap(products);
-    }
-
-    public void showOrders() {
-        System.out.println("\nOrders:");
-        printMap(orders);
-    }
-
-    private <K, V> void printMap(Map<K, V> map) {
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            System.out.println(entry.getKey() + ": " + entry.getValue());
-        }
-    }
-
-    public void displaySortedProductsByName() {
-        displaySortedProductsByComparable(new ProductNameComparator(), "Products sorted by name:");
-    }
-
-    public void displaySortedProductsByPrice() {
-        displaySortedProductsByComparable(Product::compareTo, "Products sorted by price:");
-    }
-
-    public void displaySortedProductsByStock() {
-        displaySortedProductsByComparable(new ProductStockComparator(), "Products sorted by stock:");
-    }
-
-    public void displaySortedProductsByComparable(Comparator<Product> comparator, String msg) {
-        System.out.println(msg);
-        products.values().stream()
-                .sorted(comparator)
-                .toList()
-                .forEach(System.out::println);
-    }
-
-    public void displayAvailableProducts() {
-        List<Product> availableProducts = products.values().stream()
-                .filter(product -> product.getStock() > 0)
-                .toList();
-        System.out.println("Available Products:");
-        availableProducts.forEach(System.out::println);
-    }
-
-    public List<Product> recommendProducts(User user) {
-        Map<Product, Integer> userHistory = user.getHistory();
-
-        if (!userHistory.isEmpty()) {
-            Product mostPopularProduct = userHistory.entrySet().stream()
-                    .max(Map.Entry.comparingByValue())
-                    .map(Map.Entry::getKey)
-                    .orElse(null);
-
-            if (mostPopularProduct != null) {
-                return Collections.singletonList(mostPopularProduct);
-            }
-        }
-
-
-        Map<Product, Integer> userCart = user.getCart();
-
-        if (!userCart.isEmpty()) {
-            return new ArrayList<>(userCart.keySet());
-        }
-
-        return Collections.emptyList();
+    @Bean
+    public WebClient.Builder webclintBuilder() {
+        return WebClient.builder();
     }
 }
-
-
-```
-## Phase 3: Advanced Functions
-
-```java
-public class ProductNameComparator implements Comparator<Product> {
-    @Override
-    public int compare(Product product1, Product product2) {
-        return product1.getName().compareTo(product2.getName());
-    }
-}
-
-public class ProductStockComparator implements Comparator<Product> {
-    @Override
-    public int compare(Product product1, Product product2) {
-        return Integer.compare(product1.getStock(), product2.getStock());
-    }
-}
-
-    private <K, V> void printMap(Map<K, V> map) {
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            System.out.println(entry.getKey() + ": " + entry.getValue());
-        }
-    }
-
-    public void displaySortedProductsByName() {
-        displaySortedProductsByComparable(new ProductNameComparator(), "Products sorted by name:");
-    }
-
-    public void displaySortedProductsByPrice() {
-        displaySortedProductsByComparable(Product::compareTo, "Products sorted by price:");
-    }
-
-    public void displaySortedProductsByStock() {
-        displaySortedProductsByComparable(new ProductStockComparator(), "Products sorted by stock:");
-    }
-
-    public void displaySortedProductsByComparable(Comparator<Product> comparator, String msg) {
-        System.out.println(msg);
-        products.values().stream()
-                .sorted(comparator)
-                .toList()
-                .forEach(System.out::println);
-    }
 ```
 
-## Phase 4: Demonstration
 ```java
-public class ECommerceDemo {
-    public static void main(String[] args) {
 
-        ECommercePlatform eCommercePlatform = new ECommercePlatform();
+@Service
+public class WeatherService {
+    private final WebClient.Builder webclientBuilder;
 
-        User user1 = User.builder().username("user1").build();
-        User user2 = User.builder().username("user2").build();
-        eCommercePlatform.addUser(user1, user2);
+    private final WeatherDataRepository weatherDataRepository;
 
-        Product product1 = Product.builder().name("Apple").price(1.0).stock(100).build();
-        Product product2 = Product.builder().name("Banana").price(0.5).stock(150).build();
-        Product product3 = Product.builder().name("Bread").price(2.0).stock(50).build();
-        Product product4 = Product.builder().name("Cheese").price(5.0).stock(30).build();
-        Product product5 = Product.builder().name("Chicken").price(8.0).stock(20).build();
-        Product product6 = Product.builder().name("Eggs").price(1.5).stock(40).build();
-        Product product7 = Product.builder().name("Milk").price(2.5).stock(60).build();
-        Product product8 = Product.builder().name("Yogurt").price(1.8).stock(50).build();
-        Product product9 = Product.builder().name("Tomato").price(1.2).stock(70).build();
-        Product product10 = Product.builder().name("Pasta").price(2.3).stock(40).build();
+    @Value("${open-meteo.url.archive}")
+    private String url;
 
-        eCommercePlatform.addProduct(product1, product2, product3, product4, product5, product6, product7, product8, product9, product10);
+    @Value("${open-meteo.param.archive.latitude}")
+    private String latitude;
 
-        user1.addToCart(product1, 3);
-        user1.addToCart(product2, 2);
-        user2.addToCart(product1, 1);
+    @Value("${open-meteo.param.archive.longitude}")
+    private String longitude;
 
-        eCommercePlatform.showUsers();
-        eCommercePlatform.showProducts();
+    @Value("${open-meteo.param.archive.start_date}")
+    private String startDate;
+
+    @Value("${open-meteo.param.archive.end_date}")
+    private String endDate;
+
+    public WeatherService(WebClient.Builder webclientBuilder, WeatherDataRepository weatherDataRepository) {
+        this.webclientBuilder = webclientBuilder;
+        this.weatherDataRepository = weatherDataRepository;
+    }
+
+    @PostConstruct
+    private void downloadDataAndSave() {
+        WeatherAllDataDTO weatherAllDataDTO = fetchDataFromExternalAPI();
+        List<HourWeatherData> hourWeatherDataListToSave = convertToWeatherDataList(weatherAllDataDTO);
+
+        save(hourWeatherDataListToSave);
+    }
+
+    private WeatherAllDataDTO fetchDataFromExternalAPI() {
+        return webclientBuilder
+                .baseUrl(url)
+                .build()
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .queryParam("latitude", latitude)
+                        .queryParam("longitude", longitude)
+                        .queryParam("start_date", startDate)
+                        .queryParam("end_date", endDate)
+                        .queryParam("hourly", "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m")
+                        .queryParam("timeformat", "unixtime")
+                        .build())
+                .retrieve()
+                .bodyToMono(WeatherAllDataDTO.class)
+                .blockOptional()
+                .orElseThrow();
+    }
+
+    public void save(List<HourWeatherData> hourWeatherDataListToSave) {
+        weatherDataRepository.saveAll(hourWeatherDataListToSave);
+    }
+
+    public void save(HourWeatherData hourWeatherData) {
+        weatherDataRepository.save(hourWeatherData);
+    }
+}
+
+```
+
+### Process the received data and convert it into the desired format.
+
+```java
+
+public class WeatherDataConverter {
+
+    public static List<HourWeatherData> convertToWeatherDataList(WeatherAllDataDTO weatherAllDataDTO) {
+        List<HourWeatherData> hourWeatherDataList = new ArrayList<>();
+
+        for (int i = 0; i < weatherAllDataDTO.getHourly().getTemperatureList().size(); i++) {
+            hourWeatherDataList.add(createWeatherDataFromDTO(weatherAllDataDTO, i));
+        }
+
+        return hourWeatherDataList;
+    }
+
+    private static HourWeatherData createWeatherDataFromDTO(WeatherAllDataDTO weatherAllDataDTO, int index) {
+        HourWeatherData hourWeatherData = new HourWeatherData();
+        hourWeatherData.setLatitude(weatherAllDataDTO.getLatitude());
+        hourWeatherData.setLongitude(weatherAllDataDTO.getLongitude());
+        hourWeatherData.setDate(new Date(weatherAllDataDTO.getHourly().getTime().get(index) * 1000));
+        hourWeatherData.setAverageTemperature(weatherAllDataDTO.getHourly().getTemperatureList().get(index));
+        hourWeatherData.setAverageWindSpeed(weatherAllDataDTO.getHourly().getWindSpeedList().get(index));
+        hourWeatherData.setAverageHumidity(weatherAllDataDTO.getHourly().getRelativeHumidityList().get(index));
+        hourWeatherData.setAveragePrecipitation(weatherAllDataDTO.getHourly().getPrecipitationList().get(index));
+
+        return hourWeatherData;
+    }
+
+
+    public static List<DailyWeatherData> convertWeatherDataHourToWeatherDataDaily(List<HourWeatherData> hourWeatherData) {
+        SimpleDateFormat dailyFormatter = new SimpleDateFormat("dd/MM/yyyy");
+
+
+        return convertWeatherDataHourByDataFormat(hourWeatherData, dailyFormatter, DailyWeatherData.class);
+    }
+
+    public static List<MonthWeatherData> convertWeatherDataHourToWeatherDataMonth(List<HourWeatherData> hourWeatherData) {
+
+        SimpleDateFormat monthFormatter = new SimpleDateFormat("MMMM/yyyy");
+
+        return convertWeatherDataHourByDataFormat(hourWeatherData, monthFormatter, MonthWeatherData.class);
+    }
+
+    private static <T extends WeatherData> List<T> convertWeatherDataHourByDataFormat(List<HourWeatherData> hourWeatherData, SimpleDateFormat formatter, Class<T> subtypeClass) {
+
+
+        return hourWeatherData.stream()
+                .collect(Collectors.groupingBy(
+                        hourWeatherDataKey -> {
+                            try {
+                                return formatter.parse(formatter.format(hourWeatherDataKey.getDate()));
+                            } catch (ParseException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                ))
+                .entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> calculateAverageByHourRange(entry.getKey(), entry.getValue(), subtypeClass))
+                .collect(Collectors.toList());
+    }
+
+    private static <T extends WeatherData> T calculateAverageByHourRange(Date day, List<HourWeatherData> hourWeatherData, Class<T> subtypeClass) {
+        double averageTemperature = hourWeatherData.stream()
+                .mapToDouble(HourWeatherData::getAverageTemperature)
+                .average()
+                .orElse(0.0);
+
+        double averageHumidity = hourWeatherData.stream()
+                .mapToDouble(HourWeatherData::getAverageHumidity)
+                .average()
+                .orElse(0.0);
+
+        double averagePrecipitation = hourWeatherData.stream()
+                .mapToDouble(HourWeatherData::getAveragePrecipitation)
+                .average()
+                .orElse(0.0);
+
+        double averageWindSpeed = hourWeatherData.stream()
+                .mapToDouble(HourWeatherData::getAverageWindSpeed)
+                .average()
+                .orElse(0.0);
+
+        double commonLatitude = getCommonValue(hourWeatherData, HourWeatherData::getLatitude, "Latitude");
+        double commonLongitude = getCommonValue(hourWeatherData, HourWeatherData::getLongitude, "Longitude");
+
 
         try {
-            eCommercePlatform.createOrder(user1);
-            eCommercePlatform.createOrder(user2);
-        } catch (RuntimeException e) {
-            System.out.println("Error: " + e.getMessage());
+            return subtypeClass.getDeclaredConstructor(Date.class, double.class, double.class, double.class, double.class, double.class, double.class)
+                    .newInstance(day, averageTemperature, averageHumidity, averagePrecipitation, averageWindSpeed, commonLatitude, commonLongitude);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                 NoSuchMethodException e) {
+            throw new RuntimeException(e);
         }
 
-        System.out.println("\n---------------------\nBefore orders:");
-        eCommercePlatform.showUsers();
-        eCommercePlatform.showProducts();
-        eCommercePlatform.showOrders();
+    }
 
-        System.out.println("\n---------------------\nSort product");
-
-        eCommercePlatform.showProducts();
-
-        eCommercePlatform.displaySortedProductsByName();
-        eCommercePlatform.displaySortedProductsByPrice();
-        eCommercePlatform.displaySortedProductsByStock();
-
-        eCommercePlatform.displayAvailableProducts();
-
-        System.out.println("\n---------------------\nRecommendProducts");
-        eCommercePlatform.recommendProducts(user1).forEach(System.out::println);
+    private static double getCommonValue(List<HourWeatherData> hourWeatherData, Function<HourWeatherData, Double> valueExtractor, String propertyName) {
+        return hourWeatherData.stream()
+                .map(valueExtractor)
+                .distinct()
+                .reduce((first, second) -> {
+                    if (first.equals(second)) {
+                        return first;
+                    } else {
+                        throw new IllegalArgumentException(propertyName + " values are not the same for all elements");
+                    }
+                })
+                .orElseThrow(() -> new IllegalArgumentException("List is empty"));
     }
 
 }
 
 ```
 
+## Phase 2: Analysis of extreme weather conditions
+
+### Find the 10 hottest and coldest days by average temperature.
+
+```java
+
+@Service
+public class WeatherService {
+
+    public List<DailyWeatherData> getTop10Days(List<HourWeatherData> hourWeatherDataList, Comparator<DailyWeatherData> comparator) {
+        return convertWeatherDataHourToWeatherDataDaily(hourWeatherDataList).stream()
+                .sorted(comparator)
+                .limit(10)
+                .collect(Collectors.toList());
+    }
+
+    public List<DailyWeatherData> getTop10Hottest(List<HourWeatherData> hourWeatherDataList) {
+        return getTop10Days(hourWeatherDataList, Comparator.comparingDouble(DailyWeatherData::getAverageTemperature).reversed());
+    }
+
+    public List<DailyWeatherData> getTop10Coldest(List<HourWeatherData> hourWeatherDataList) {
+        return getTop10Days(hourWeatherDataList, Comparator.comparingDouble(DailyWeatherData::getAverageTemperature));
+    }
+}
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class WeatherServiceTest {
+
+    @Test
+    @DisplayName("Знайдіть 10 найгарячіших днів за середньою температурою.")
+    public void getTop10Hottest() {
+        weatherService.getTop10Hottest(hourWeatherDataFromDb)
+                .forEach(System.out::println);
+    }
+
+    @Test
+    @DisplayName("Знайдіть 10 найхолодніших  днів за середньою температурою.")
+    public void getTop10Coldest() {
+        weatherService.getTop10Coldest(hourWeatherDataFromDb)
+                .forEach(System.out::println);
+
+    }
+}
+```
+
+### Find the 10 wettest days by average rainfall.
+
+```java
+
+@Service
+public class WeatherService {
+
+    public List<DailyWeatherData> getTop10Days(List<HourWeatherData> hourWeatherDataList, Comparator<DailyWeatherData> comparator) {
+        return convertWeatherDataHourToWeatherDataDaily(hourWeatherDataList).stream()
+                .sorted(comparator)
+                .limit(10)
+                .collect(Collectors.toList());
+    }
+
+    public List<DailyWeatherData> getTop10Wettest(List<HourWeatherData> hourWeatherDataList) {
+        return getTop10Days(hourWeatherDataList, Comparator.comparingDouble(DailyWeatherData::getAveragePrecipitation).reversed());
+    }
+}
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class WeatherServiceTest {
+
+    @DisplayName("Знайдіть 10 найвологіших днів за середнім рівнем опадів.")
+    public void getTop10Wettest() {
+        weatherService.getTop10Wettest(hourWeatherDataFromDb)
+                .forEach(System.out::println);
+    }
+}
+```
+
+## Phase 3: Pattern recognition
+
+### Determine the days on which there were more than 7 consecutive days of precipitation.
+
+```java
+
+@Service
+public class WeatherService {
+
+    public List<List<DailyWeatherData>> getDaysWithConsecutivePrecipitation(List<DailyWeatherData> dailyWeatherData, int consecutiveDaysThreshold) {
+
+        List<DailyWeatherData> currentSequence = new ArrayList<>();
+        return dailyWeatherData.stream()
+                .sorted(Comparator.comparing(DailyWeatherData::getDate))
+                .flatMap(dailyData -> {
+                    if (dailyData.getAveragePrecipitation() > 0) {
+                        currentSequence.add(dailyData);
+                    } else {
+                        if (currentSequence.size() >= consecutiveDaysThreshold) {
+                            List<List<DailyWeatherData>> intermediateResult = new ArrayList<>(List.of(new ArrayList<>(currentSequence)));
+                            currentSequence.clear();
+                            return intermediateResult.stream();
+                        }
+                        currentSequence.clear();
+                    }
+                    return Stream.empty();
+                })
+                .filter(list -> list.size() >= consecutiveDaysThreshold)
+                .toList();
+    }
+}
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class WeatherServiceTest {
+
+    @Test
+    @DisplayName("Визначте дні, в які було більше 7 послідовних днів опадів.")
+    public void getDaysWithConsecutivePrecipitation() {
+        List<List<DailyWeatherData>> daysWithConsecutivePrecipitation = weatherService.getDaysWithConsecutivePrecipitation(WeatherDataConverter.convertWeatherDataHourToWeatherDataDaily(hourWeatherDataFromDb), 7);
+
+        daysWithConsecutivePrecipitation.forEach(x -> {
+            System.out.println(x.size());
+            x.forEach(System.out::println);
+        });
+    }
+}
+```
+
+### Determine the days on which the temperature increased by at least 5°C for 5 consecutive days.
+
+```java
+
+@Service
+public class WeatherService {
+
+    public List<List<DailyWeatherData>> getTemperatureIncreaseSequences(List<DailyWeatherData> dailyWeatherData, int temperatureIncrease, int daysThreshold) {
+        List<List<DailyWeatherData>> result = new ArrayList<>();
+
+        IntStream.range(0, dailyWeatherData.size() - daysThreshold + 1)
+                .forEach(index -> {
+                    boolean isTemperatureIncrease = IntStream.range(1, daysThreshold)
+                            .allMatch(offset -> dailyWeatherData.get(index + offset).getAverageTemperature() >=
+                                    dailyWeatherData.get(index).getAverageTemperature() + temperatureIncrease);
+
+                    if (isTemperatureIncrease) {
+                        List<DailyWeatherData> subList = dailyWeatherData.subList(index, index + daysThreshold);
+                        result.add(new ArrayList<>(subList));
+                    }
+                });
+
+        return result;
+    }
+}
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class WeatherServiceTest {
+
+    @Test
+    @DisplayName("Визначте дні, в які температура зросла на щонайменше 5°C протягом 5 послідовних днів.")
+    public void getTemperatureIncreaseSequences() {
+
+        List<List<DailyWeatherData>> daysWithConsecutivePrecipitation = weatherService.getTemperatureIncreaseSequences(WeatherDataConverter.convertWeatherDataHourToWeatherDataDaily(hourWeatherDataFromDb), 5, 5);
+
+        daysWithConsecutivePrecipitation.forEach(x -> {
+            System.out.println("-------------");
+            x.forEach(System.out::println);
+        });
+    }
+}
+```
+
+## Phase 3: Aggregation and summary statistics
+
+### Calculate the global average temperature, humidity and precipitation for each month.
+
+```java
+
+@Service
+public class WeatherService {
+
+    public List<MonthWeatherData> getMonthlyStats(List<HourWeatherData> hourWeatherData) {
+        return convertWeatherDataHourToWeatherDataMonth(hourWeatherData);
+    }
+}
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class WeatherServiceTest {
+
+    @Test
+    @DisplayName("Розрахуйте середню глобальну температуру, вологість та рівень опадів для кожного місяця.")
+    public void getMonthlyStats() {
+        List<MonthWeatherData> monthWeatherDataStats = weatherService.getMonthlyStats(hourWeatherDataFromDb);
+        monthWeatherDataStats.forEach(System.out::println);
+    }
+}
+```
+
+### Identify the month with the highest average wind speed.
+
+```java
+
+@Service
+public class WeatherService {
+
+    public MonthWeatherData getMonthWithHighestAverageWindSpeed(List<HourWeatherData> hourWeatherData) {
+        return convertWeatherDataHourToWeatherDataMonth(hourWeatherData).stream()
+                .max(Comparator.comparing(MonthWeatherData::getAverageWindSpeed))
+                .orElseThrow();
+    }
+}
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class WeatherServiceTest {
+
+    @Test
+    @DisplayName("Визначте місяць з найвищою середньою швидкістю вітру.")
+    public void getMonthWithHighestAverageWindSpeed() {
+        System.out.println(weatherService.getMonthWithHighestAverageWindSpeed(hourWeatherDataFromDb));
+    }
+}
+```
 
 # Conclusion
 
-A simple e-commerce backend was developed using Java Collections. The system includes management of goods, users and orders. The Product, User, and Order classes interact with each other, allowing you to perform operations such as adding products to the cart, creating orders, and tracking product inventory. The system is ready to use to demonstrate basic e-commerce functionality.
+As a result of this lab, we successfully learned and implemented Java Streams to interact with the global weather API.
+They successfully completed the task of analyzing extreme weather conditions, recognizing patterns and calculating
+aggregated statistical indicators. The use of functional programming in Java made it possible to conveniently and
+efficiently process a large amount of meteorological data, ensuring convenience and readability of the code.
+

@@ -1,33 +1,27 @@
 package com.example.service;
 
-import com.example.converter.WeatherDataConverter;
 import com.example.dto.WeatherAllDataDTO;
 import com.example.model.DailyWeatherData;
 import com.example.model.HourWeatherData;
 import com.example.model.MonthWeatherData;
 import com.example.repository.WeatherDataRepository;
 import jakarta.annotation.PostConstruct;
-import org.modelmapper.internal.Pair;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static com.example.converter.WeatherDataConverter.convertToWeatherDataList;
+import static com.example.converter.WeatherDataConverter.*;
 
 @Service
 public class WeatherService {
-
-
     private final WebClient.Builder webclientBuilder;
 
     private final WeatherDataRepository weatherDataRepository;
-
 
     @Value("${open-meteo.url.archive}")
     private String url;
@@ -69,7 +63,6 @@ public class WeatherService {
                         .queryParam("end_date", endDate)
                         .queryParam("hourly", "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m")
                         .queryParam("timeformat", "unixtime")
-//                        .queryParam("timezone", "GMT")
                         .build())
                 .retrieve()
                 .bodyToMono(WeatherAllDataDTO.class)
@@ -90,118 +83,80 @@ public class WeatherService {
                 .stream()
                 .peek(hourWeatherData -> {
                     double scale = Math.pow(10, 2);
-
                     hourWeatherData.setAverageTemperature((Math.round(hourWeatherData.getAverageTemperature()) * scale) / scale);
                     hourWeatherData.setAveragePrecipitation((Math.round(hourWeatherData.getAveragePrecipitation()) * scale) / scale);
                     hourWeatherData.setAverageHumidity((Math.round(hourWeatherData.getAverageHumidity()) * scale) / scale);
-
-//                    return hourWeatherData;
                 })
                 .toList();
     }
 
-    public List<HourWeatherData> findTop10Stations(List<HourWeatherData> hourWeatherDataList, Comparator<HourWeatherData> comparator) {
-        return hourWeatherDataList.stream()
+    public List<DailyWeatherData> getTop10Days(List<HourWeatherData> hourWeatherDataList, Comparator<DailyWeatherData> comparator) {
+        return convertWeatherDataHourToWeatherDataDaily(hourWeatherDataList).stream()
                 .sorted(comparator)
                 .limit(10)
                 .collect(Collectors.toList());
     }
 
+    public List<DailyWeatherData> getTop10Hottest(List<HourWeatherData> hourWeatherDataList) {
+        return getTop10Days(hourWeatherDataList,  Comparator.comparingDouble(DailyWeatherData::getAverageTemperature).reversed());
+    }
 
-//    public List<DailyWeatherData> calculateDailyAverages(List<HourWeatherData> hourWeatherData) {
-//        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
-//
-//        return hourWeatherData.stream()
-//                .collect(Collectors.groupingBy(
-//                        hourWeatherDataKey -> {
-//                            try {
-//                                return formatter.parse(formatter.format(hourWeatherDataKey.getDate()));
-//                            } catch (ParseException e) {
-//                                throw new RuntimeException(e);
-//                            }
-//                        }
-//                ))
-//                .entrySet().stream()
-//                .sorted(Map.Entry.comparingByKey())
-//                .map(entry -> calculateDailyAverage(entry.getKey(), entry.getValue()))
-//                .collect(Collectors.toList());
-//
-//    }
+    public List<DailyWeatherData> getTop10Coldest(List<HourWeatherData> hourWeatherDataList) {
+        return getTop10Days(hourWeatherDataList, Comparator.comparingDouble(DailyWeatherData::getAverageTemperature));
+    }
 
+    public List<DailyWeatherData> getTop10Wettest(List<HourWeatherData> hourWeatherDataList) {
+        return getTop10Days(hourWeatherDataList, Comparator.comparingDouble(DailyWeatherData::getAveragePrecipitation).reversed());
+    }
 
-    public List<List<DailyWeatherData>> getDaysWithConsecutivePrecipitation(List<DailyWeatherData> dailyWeatherData,
-                                                                            int consecutiveDaysThreshold) {
+    public List<List<DailyWeatherData>> getDaysWithConsecutivePrecipitation(List<DailyWeatherData> dailyWeatherData, int consecutiveDaysThreshold) {
 
-//        List<List<DailyWeatherData>> result = new ArrayList<>();
-//        List<DailyWeatherData> currentSequence = new ArrayList<>();
-//
-//        dailyWeatherData.stream()
-//                .collect(Collectors.groupingBy(data -> data.getAveragePrecipitation() > 0))
-//                .forEach((hasPrecipitation, dataGroup) -> {
-//                    if (hasPrecipitation) {
-//                        currentSequence.addAll(dataGroup);
-//                    } else {
-//                        if (!currentSequence.isEmpty()) {
-//                            if (currentSequence.size() >= consecutiveDaysThreshold) {
-//                                result.add(new ArrayList<>(currentSequence));
-//                            }
-//                            currentSequence.clear();
-//                        }
-//                    }
-//                });
-//
-//        if (!currentSequence.isEmpty() && currentSequence.size() >= consecutiveDaysThreshold) {
-//            result.add(new ArrayList<>(currentSequence));
-//        }
-//
-//        return result;
-
-
-        List<List<DailyWeatherData>> result = new ArrayList<>();
         List<DailyWeatherData> currentSequence = new ArrayList<>();
-
-
         return dailyWeatherData.stream()
                 .sorted(Comparator.comparing(DailyWeatherData::getDate))
-                .map(dailyData -> {
-
-                            if (dailyData.getAveragePrecipitation() > 0) {
-                                currentSequence.add(dailyData);
-                            } else {
-                                if (currentSequence.size() >= consecutiveDaysThreshold) {
-                                    result.add(new ArrayList<>(currentSequence));
-                                }
-                                currentSequence.clear();
-                            }
-                            return currentSequence;
+                .flatMap(dailyData -> {
+                    if (dailyData.getAveragePrecipitation() > 0) {
+                        currentSequence.add(dailyData);
+                    } else {
+                        if (currentSequence.size() >= consecutiveDaysThreshold) {
+                            List<List<DailyWeatherData>> intermediateResult = new ArrayList<>(List.of(new ArrayList<>(currentSequence)));
+                            currentSequence.clear();
+                            return intermediateResult.stream();
                         }
-
-                ).filter(list -> list.size() >= consecutiveDaysThreshold)
+                        currentSequence.clear();
+                    }
+                    return Stream.empty();
+                })
+                .filter(list -> list.size() >= consecutiveDaysThreshold)
                 .toList();
-
-
-//        List<List<DailyWeatherData>> result = new ArrayList<>();
-//        List<DailyWeatherData> currentSequence = new ArrayList<>();
-//
-//        for (DailyWeatherData data : dailyWeatherData) {
-//            if (data.getAveragePrecipitation() > 0 ) {
-//                currentSequence.add(data);
-//            } else {
-//                if (currentSequence.size() >= consecutiveDaysThreshold) {
-//                    result.add(new ArrayList<>(currentSequence));
-//                }
-//                currentSequence.clear();
-//            }
-//        }
-//
-//        if (currentSequence.size() >= consecutiveDaysThreshold) {
-//            result.add(new ArrayList<>(currentSequence));
-//        }
-//
-//        return result;
-
-
     }
 
 
+    public List<List<DailyWeatherData>> getTemperatureIncreaseSequences(List<DailyWeatherData> dailyWeatherData, int temperatureIncrease, int daysThreshold) {
+        List<List<DailyWeatherData>> result = new ArrayList<>();
+
+        IntStream.range(0, dailyWeatherData.size() - daysThreshold + 1)
+                .forEach(index -> {
+                    boolean isTemperatureIncrease = IntStream.range(1, daysThreshold)
+                            .allMatch(offset -> dailyWeatherData.get(index + offset).getAverageTemperature() >=
+                                    dailyWeatherData.get(index).getAverageTemperature() + temperatureIncrease);
+
+                    if (isTemperatureIncrease) {
+                        List<DailyWeatherData> subList = dailyWeatherData.subList(index, index + daysThreshold);
+                        result.add(new ArrayList<>(subList));
+                    }
+                });
+
+        return result;
+    }
+
+    public List<MonthWeatherData> getMonthlyStats (List<HourWeatherData> hourWeatherData){
+       return convertWeatherDataHourToWeatherDataMonth(hourWeatherData);
+    }
+
+    public MonthWeatherData getMonthWithHighestAverageWindSpeed (List<HourWeatherData> hourWeatherData){
+       return convertWeatherDataHourToWeatherDataMonth(hourWeatherData).stream()
+               .max(Comparator.comparing(MonthWeatherData::getAverageWindSpeed))
+               .orElseThrow();
+    }
 }
