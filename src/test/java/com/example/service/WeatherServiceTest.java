@@ -83,6 +83,9 @@ public class WeatherServiceTest {
     @Test
     @DisplayName("Визначте місяць з найвищою середньою швидкістю вітру.")
     public void getMonthWithHighestAverageWindSpeed() {
-        System.out.println(weatherService.getMonthWithHighestAverageWindSpeed(hourWeatherDataFromDb));
+//        System.out.println(weatherService.getMonthWithHighestAverageWindSpeed(hourWeatherDataFromDb));
+
+
+        WeatherDataConverter.convertWeatherDataHourToWeatherDataDaily(hourWeatherDataFromDb).forEach(System.out::println);
     }
 }
