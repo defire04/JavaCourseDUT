@@ -1,466 +1,381 @@
-# Laboratory work 8
+# Laboratory work 9
 
 ## Program Functionality
 
-In this lab, we explore using Java Streams to analyze global meteorological data via HTTP requests to the Meteorological
-API.
+In this lab, we will consider the basics of Java IO, learn how to interact with the web API, and learn how to create
+Excel files in the Java environment.
 
-## Phase 1: Interaction with the API
+## Phase 1: Using the specified API
 
-### Make an HTTP request to the weather API to get the data.
-
-```java
-
-@Getter
-@Setter
-public class WeatherAllDataDTO {
-
-    private double latitude;
-    private double longitude;
-    private HourlyData hourly;
-
-    @Getter
-    @Setter
-    public static class HourlyData {
-        private List<Long> time;
-
-        @JsonProperty("temperature_2m")
-        private List<Double> temperatureList;
-
-        @JsonProperty("relative_humidity_2m")
-        private List<Double> relativeHumidityList;
-
-        @JsonProperty("precipitation")
-        private List<Double> precipitationList;
-
-        @JsonProperty("wind_speed_10m")
-        private List<Double> windSpeedList;
-
-    }
-}
-```
+### I user https://fakestoreapi.com/
 
 ```java
 
-@Configuration
-public class Lb8Config {
+@Data
+@NoArgsConstructor
+@ToString
+public class Product {
+    private long id;
+    private String title;
+    private double price;
+    private String description;
+    private String category;
+    private String image;
+    private Rating rating;
 
-    @Bean
-    public WebClient.Builder webclintBuilder() {
-        return WebClient.builder();
+    @Data
+    @NoArgsConstructor
+    @ToString
+    public static class Rating {
+        private double rate;
+        private int count;
     }
 }
+
+@Data
+@NoArgsConstructor
+@ToString
+public class User {
+    private long id;
+    private String email;
+    private String username;
+    private String password;
+    private Name name;
+    private String phone;
+    private Address address;
+    private int __v;
+
+    @Data
+    @NoArgsConstructor
+    @ToString
+    public static class Name {
+        private String firstname;
+        private String lastname;
+
+    }
+
+    @Data
+    @NoArgsConstructor
+    @ToString
+    public static class Address {
+        private Geolocation geolocation;
+        private String city;
+        private String street;
+        private int number;
+        private String zipcode;
+
+    }
+
+    @Data
+    @NoArgsConstructor
+    @ToString
+    public static class Geolocation {
+        private String lat;
+        @JsonProperty("long")
+        private String lon;
+
+    }
+}
+
 ```
 
 ```java
 
 @Service
-public class WeatherService {
-    private final WebClient.Builder webclientBuilder;
+public class FakeStoreApiConnection<T> {
 
-    private final WeatherDataRepository weatherDataRepository;
+    private final WebClient.Builder webclintBuilder;
 
-    @Value("${open-meteo.url.archive}")
-    private String url;
+    @Value("${api.path.base}")
+    private String basePath;
 
-    @Value("${open-meteo.param.archive.latitude}")
-    private String latitude;
-
-    @Value("${open-meteo.param.archive.longitude}")
-    private String longitude;
-
-    @Value("${open-meteo.param.archive.start_date}")
-    private String startDate;
-
-    @Value("${open-meteo.param.archive.end_date}")
-    private String endDate;
-
-    public WeatherService(WebClient.Builder webclientBuilder, WeatherDataRepository weatherDataRepository) {
-        this.webclientBuilder = webclientBuilder;
-        this.weatherDataRepository = weatherDataRepository;
+    public FakeStoreApiConnection(WebClient.Builder webclintBuilder) {
+        this.webclintBuilder = webclintBuilder;
     }
 
-    @PostConstruct
-    private void downloadDataAndSave() {
-        WeatherAllDataDTO weatherAllDataDTO = fetchDataFromExternalAPI();
-        List<HourWeatherData> hourWeatherDataListToSave = convertToWeatherDataList(weatherAllDataDTO);
+    public List<T> getListFromApi(String endpoint, Class<T> elementType) {
+        ParameterizedTypeReference<List<T>> typeReference = new ParameterizedTypeReference<>() {
+            @Override
+            @NonNull
+            public Type getType() {
+                return new ParameterizedType() {
+                    @Override
+                    public Type[] getActualTypeArguments() {
+                        return new Type[]{elementType};
+                    }
 
-        save(hourWeatherDataListToSave);
-    }
+                    @Override
+                    public Type getRawType() {
+                        return List.class;
+                    }
 
-    private WeatherAllDataDTO fetchDataFromExternalAPI() {
-        return webclientBuilder
-                .baseUrl(url)
+                    @Override
+                    public Type getOwnerType() {
+                        return null;
+                    }
+                };
+            }
+        };
+
+        return webclintBuilder.baseUrl(basePath)
                 .build()
                 .get()
-                .uri(uriBuilder -> uriBuilder
-                        .queryParam("latitude", latitude)
-                        .queryParam("longitude", longitude)
-                        .queryParam("start_date", startDate)
-                        .queryParam("end_date", endDate)
-                        .queryParam("hourly", "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m")
-                        .queryParam("timeformat", "unixtime")
-                        .build())
+                .uri(endpoint)
                 .retrieve()
-                .bodyToMono(WeatherAllDataDTO.class)
+                .bodyToMono(typeReference)
                 .blockOptional()
                 .orElseThrow();
     }
+}
 
-    public void save(List<HourWeatherData> hourWeatherDataListToSave) {
-        weatherDataRepository.saveAll(hourWeatherDataListToSave);
+@Service
+public class ProductService {
+
+    private final FakeStoreApiConnection<Product> faceStoreApiConnect;
+
+    private final ProductRepository productRepository;
+
+    @Value("${api.path.products}")
+    private String productsPath;
+
+    public ProductService(FakeStoreApiConnection<Product> faceStoreApiConnect, ProductRepository productRepository) {
+        this.faceStoreApiConnect = faceStoreApiConnect;
+        this.productRepository = productRepository;
     }
 
-    public void save(HourWeatherData hourWeatherData) {
-        weatherDataRepository.save(hourWeatherData);
+    @PostConstruct
+    public void saveToExcel() {
+        List<Product> usersFromApi = getProductsPathFromApi();
+        productRepository.saveAll(usersFromApi);
+    }
+
+    public List<Product> getProductsPathFromApi() {
+        return faceStoreApiConnect.getListFromApi(productsPath, Product.class);
+    }
+}
+
+@Service
+public class UserService {
+
+    private final FakeStoreApiConnection<User> faceStoreApiConnect;
+
+    private final UserRepository userRepository;
+
+    @Value("${api.path.users}")
+    private String usersPath;
+
+    public UserService(FakeStoreApiConnection<User> faceStoreApiConnect, UserRepository userRepository) {
+        this.faceStoreApiConnect = faceStoreApiConnect;
+        this.userRepository = userRepository;
+    }
+
+    @PostConstruct
+    public void saveToExcel() {
+        List<User> usersFromApi = getUsersFromApi();
+        userRepository.saveAll(usersFromApi);
+    }
+
+    public List<User> getUsersFromApi() {
+        return faceStoreApiConnect.getListFromApi(usersPath, User.class);
     }
 }
 
 ```
 
-### Process the received data and convert it into the desired format.
-
-```java
-
-public class WeatherDataConverter {
-
-    public static List<HourWeatherData> convertToWeatherDataList(WeatherAllDataDTO weatherAllDataDTO) {
-        List<HourWeatherData> hourWeatherDataList = new ArrayList<>();
-
-        for (int i = 0; i < weatherAllDataDTO.getHourly().getTemperatureList().size(); i++) {
-            hourWeatherDataList.add(createWeatherDataFromDTO(weatherAllDataDTO, i));
-        }
-
-        return hourWeatherDataList;
-    }
-
-    private static HourWeatherData createWeatherDataFromDTO(WeatherAllDataDTO weatherAllDataDTO, int index) {
-        HourWeatherData hourWeatherData = new HourWeatherData();
-        hourWeatherData.setLatitude(weatherAllDataDTO.getLatitude());
-        hourWeatherData.setLongitude(weatherAllDataDTO.getLongitude());
-        hourWeatherData.setDate(new Date(weatherAllDataDTO.getHourly().getTime().get(index) * 1000));
-        hourWeatherData.setAverageTemperature(weatherAllDataDTO.getHourly().getTemperatureList().get(index));
-        hourWeatherData.setAverageWindSpeed(weatherAllDataDTO.getHourly().getWindSpeedList().get(index));
-        hourWeatherData.setAverageHumidity(weatherAllDataDTO.getHourly().getRelativeHumidityList().get(index));
-        hourWeatherData.setAveragePrecipitation(weatherAllDataDTO.getHourly().getPrecipitationList().get(index));
-
-        return hourWeatherData;
-    }
-
-
-    public static List<DailyWeatherData> convertWeatherDataHourToWeatherDataDaily(List<HourWeatherData> hourWeatherData) {
-        SimpleDateFormat dailyFormatter = new SimpleDateFormat("dd/MM/yyyy");
-
-
-        return convertWeatherDataHourByDataFormat(hourWeatherData, dailyFormatter, DailyWeatherData.class);
-    }
-
-    public static List<MonthWeatherData> convertWeatherDataHourToWeatherDataMonth(List<HourWeatherData> hourWeatherData) {
-
-        SimpleDateFormat monthFormatter = new SimpleDateFormat("MMMM/yyyy");
-
-        return convertWeatherDataHourByDataFormat(hourWeatherData, monthFormatter, MonthWeatherData.class);
-    }
-
-    private static <T extends WeatherData> List<T> convertWeatherDataHourByDataFormat(List<HourWeatherData> hourWeatherData, SimpleDateFormat formatter, Class<T> subtypeClass) {
-
-
-        return hourWeatherData.stream()
-                .collect(Collectors.groupingBy(
-                        hourWeatherDataKey -> {
-                            try {
-                                return formatter.parse(formatter.format(hourWeatherDataKey.getDate()));
-                            } catch (ParseException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                ))
-                .entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> calculateAverageByHourRange(entry.getKey(), entry.getValue(), subtypeClass))
-                .collect(Collectors.toList());
-    }
-
-    private static <T extends WeatherData> T calculateAverageByHourRange(Date day, List<HourWeatherData> hourWeatherData, Class<T> subtypeClass) {
-        double averageTemperature = hourWeatherData.stream()
-                .mapToDouble(HourWeatherData::getAverageTemperature)
-                .average()
-                .orElse(0.0);
-
-        double averageHumidity = hourWeatherData.stream()
-                .mapToDouble(HourWeatherData::getAverageHumidity)
-                .average()
-                .orElse(0.0);
-
-        double averagePrecipitation = hourWeatherData.stream()
-                .mapToDouble(HourWeatherData::getAveragePrecipitation)
-                .average()
-                .orElse(0.0);
-
-        double averageWindSpeed = hourWeatherData.stream()
-                .mapToDouble(HourWeatherData::getAverageWindSpeed)
-                .average()
-                .orElse(0.0);
-
-        double commonLatitude = getCommonValue(hourWeatherData, HourWeatherData::getLatitude, "Latitude");
-        double commonLongitude = getCommonValue(hourWeatherData, HourWeatherData::getLongitude, "Longitude");
-
-
-        try {
-            return subtypeClass.getDeclaredConstructor(Date.class, double.class, double.class, double.class, double.class, double.class, double.class)
-                    .newInstance(day, averageTemperature, averageHumidity, averagePrecipitation, averageWindSpeed, commonLatitude, commonLongitude);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                 NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-
-    private static double getCommonValue(List<HourWeatherData> hourWeatherData, Function<HourWeatherData, Double> valueExtractor, String propertyName) {
-        return hourWeatherData.stream()
-                .map(valueExtractor)
-                .distinct()
-                .reduce((first, second) -> {
-                    if (first.equals(second)) {
-                        return first;
-                    } else {
-                        throw new IllegalArgumentException(propertyName + " values are not the same for all elements");
-                    }
-                })
-                .orElseThrow(() -> new IllegalArgumentException("List is empty"));
-    }
-
-}
-
-```
-
-## Phase 2: Analysis of extreme weather conditions
+## Phase 2: Save the received data in Excel format.
 
 ### Find the 10 hottest and coldest days by average temperature.
 
 ```java
+public class ExcelModelBinder {
 
-@Service
-public class WeatherService {
 
-    public List<DailyWeatherData> getTop10Days(List<HourWeatherData> hourWeatherDataList, Comparator<DailyWeatherData> comparator) {
-        return convertWeatherDataHourToWeatherDataDaily(hourWeatherDataList).stream()
-                .sorted(comparator)
-                .limit(10)
-                .collect(Collectors.toList());
+    public static Map<Integer, Object[]> bindUserData(List<User> users) {
+
+        Map<Integer, Object[]> data = new TreeMap<>();
+        int rowCont = 1;
+
+        data.put(rowCont++, new Object[]{"ID", "Email", "Username", "Password", "First Name", "Last Name", "Phone", "City", "Street", "Number", "Zipcode", "Latitude", "Longitude", "__v"});
+
+        for (User user : users) {
+            data.put(rowCont++, new Object[]{
+                    user.getId(),
+                    user.getEmail(),
+                    user.getUsername(),
+                    user.getPassword(),
+                    user.getName().getFirstname(),
+                    user.getName().getLastname(),
+                    user.getPhone(),
+                    user.getAddress().getCity(),
+                    user.getAddress().getStreet(),
+                    user.getAddress().getNumber(),
+                    user.getAddress().getZipcode(),
+                    user.getAddress().getGeolocation().getLat(),
+                    user.getAddress().getGeolocation().getLon(),
+                    user.get__v()
+            });
+        }
+
+        return data;
     }
 
-    public List<DailyWeatherData> getTop10Hottest(List<HourWeatherData> hourWeatherDataList) {
-        return getTop10Days(hourWeatherDataList, Comparator.comparingDouble(DailyWeatherData::getAverageTemperature).reversed());
-    }
+    public static Map<Integer, Object[]> bindProductData(List<Product> products) {
 
-    public List<DailyWeatherData> getTop10Coldest(List<HourWeatherData> hourWeatherDataList) {
-        return getTop10Days(hourWeatherDataList, Comparator.comparingDouble(DailyWeatherData::getAverageTemperature));
+        Map<Integer, Object[]> data = new TreeMap<>();
+        int rowCont = 1;
+
+        data.put(rowCont++, new Object[]{"ID", "Title", "Price", "Description", "Category", "Image", "Rating Rate", "Rating Count"});
+
+        for (Product product : products) {
+            data.put(rowCont++, new Object[]{
+                    product.getId(),
+                    product.getTitle(),
+                    product.getPrice(),
+                    product.getDescription(),
+                    product.getCategory(),
+                    product.getImage(),
+                    product.getRating().getRate(),
+                    product.getRating().getCount()
+            });
+        }
+        return data;
     }
 }
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-public class WeatherServiceTest {
+```
 
-    @Test
-    @DisplayName("Знайдіть 10 найгарячіших днів за середньою температурою.")
-    public void getTop10Hottest() {
-        weatherService.getTop10Hottest(hourWeatherDataFromDb)
-                .forEach(System.out::println);
+```java
+
+@Component
+public class ProductRepository {
+
+    private final ExcelService excelService;
+
+    public ProductRepository(ExcelService excelService) {
+        this.excelService = excelService;
     }
 
-    @Test
-    @DisplayName("Знайдіть 10 найхолодніших  днів за середньою температурою.")
-    public void getTop10Coldest() {
-        weatherService.getTop10Coldest(hourWeatherDataFromDb)
-                .forEach(System.out::println);
+    public void saveAll(List<Product> products) {
+        excelService.writeToExcel(ExcelModelBinder.bindProductData(products), "product", "Product");
+    }
+}
 
+@Component
+public class UserRepository {
+
+    private final ExcelService excelService;
+
+    public UserRepository(ExcelService excelService) {
+        this.excelService = excelService;
+    }
+
+    public void saveAll(List<User> users) {
+        excelService.writeToExcel(ExcelModelBinder.bindUserData(users), "user", "User");
+    }
+}
+
+@Service
+@Slf4j
+public class ExcelService {
+
+
+    public void writeToExcel(Map<Integer, Object[]> data, String sheetList, String filename) {
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet(sheetList);
+
+        Set<Integer> keyset = data.keySet();
+
+        int rownum = 0;
+        for (Integer key : keyset) {
+
+            Row row = sheet.createRow(rownum++);
+            Object[] objArr = data.get(key);
+            int cellnum = 0;
+            for (Object obj : objArr) {
+                Cell cell = row.createCell(cellnum++);
+
+                if (obj instanceof String string) {
+                    cell.setCellValue(string);
+                } else if (obj instanceof Integer integer) {
+                    cell.setCellValue(integer);
+                } else if (obj instanceof Double doubleValue) {
+                    cell.setCellValue(doubleValue);
+                } else if (obj instanceof Float floatValue) {
+                    cell.setCellValue(floatValue);
+                } else if (obj instanceof Long longValue) {
+                    cell.setCellValue(longValue);
+                } else if (obj instanceof Boolean booleanValue) {
+                    cell.setCellValue(booleanValue);
+                } else if (obj instanceof Date date) {
+                    cell.setCellValue(date);
+                }
+
+            }
+        }
+
+        try {
+            log.info("Start try to write to file {}", filename);
+            FileOutputStream out = new FileOutputStream(filename + ".xlsx");
+            workbook.write(out);
+            out.close();
+            log.info("Successfully written to file {}", filename);
+        } catch (Exception e) {
+            log.error("Error: {} Message: {}", e.getClass(), e.getMessage());
+        }
     }
 }
 ```
 
-### Find the 10 wettest days by average rainfall.
+## Phase 3: Cover jUnit code with tests.
 
 ```java
 
-@Service
-public class WeatherService {
-
-    public List<DailyWeatherData> getTop10Days(List<HourWeatherData> hourWeatherDataList, Comparator<DailyWeatherData> comparator) {
-        return convertWeatherDataHourToWeatherDataDaily(hourWeatherDataList).stream()
-                .sorted(comparator)
-                .limit(10)
-                .collect(Collectors.toList());
-    }
-
-    public List<DailyWeatherData> getTop10Wettest(List<HourWeatherData> hourWeatherDataList) {
-        return getTop10Days(hourWeatherDataList, Comparator.comparingDouble(DailyWeatherData::getAveragePrecipitation).reversed());
-    }
-}
-
 @RunWith(SpringRunner.class)
 @SpringBootTest
-public class WeatherServiceTest {
+public class ProductServiceTest {
 
-    @DisplayName("Знайдіть 10 найвологіших днів за середнім рівнем опадів.")
-    public void getTop10Wettest() {
-        weatherService.getTop10Wettest(hourWeatherDataFromDb)
-                .forEach(System.out::println);
-    }
-}
-```
-
-## Phase 3: Pattern recognition
-
-### Determine the days on which there were more than 7 consecutive days of precipitation.
-
-```java
-
-@Service
-public class WeatherService {
-
-    public List<List<DailyWeatherData>> getDaysWithConsecutivePrecipitation(List<DailyWeatherData> dailyWeatherData, int consecutiveDaysThreshold) {
-
-        List<DailyWeatherData> currentSequence = new ArrayList<>();
-        return dailyWeatherData.stream()
-                .sorted(Comparator.comparing(DailyWeatherData::getDate))
-                .flatMap(dailyData -> {
-                    if (dailyData.getAveragePrecipitation() > 0) {
-                        currentSequence.add(dailyData);
-                    } else {
-                        if (currentSequence.size() >= consecutiveDaysThreshold) {
-                            List<List<DailyWeatherData>> intermediateResult = new ArrayList<>(List.of(new ArrayList<>(currentSequence)));
-                            currentSequence.clear();
-                            return intermediateResult.stream();
-                        }
-                        currentSequence.clear();
-                    }
-                    return Stream.empty();
-                })
-                .filter(list -> list.size() >= consecutiveDaysThreshold)
-                .toList();
-    }
-}
-
-@RunWith(SpringRunner.class)
-@SpringBootTest
-public class WeatherServiceTest {
+    @Autowired
+    private ProductService productService;
 
     @Test
-    @DisplayName("Визначте дні, в які було більше 7 послідовних днів опадів.")
-    public void getDaysWithConsecutivePrecipitation() {
-        List<List<DailyWeatherData>> daysWithConsecutivePrecipitation = weatherService.getDaysWithConsecutivePrecipitation(WeatherDataConverter.convertWeatherDataHourToWeatherDataDaily(hourWeatherDataFromDb), 7);
-
-        daysWithConsecutivePrecipitation.forEach(x -> {
-            System.out.println(x.size());
-            x.forEach(System.out::println);
-        });
+    public void getUsersFromApi() {
+        assertNotNull(productService.getProductsPathFromApi());
     }
-}
-```
 
-### Determine the days on which the temperature increased by at least 5°C for 5 consecutive days.
-
-```java
-
-@Service
-public class WeatherService {
-
-    public List<List<DailyWeatherData>> getTemperatureIncreaseSequences(List<DailyWeatherData> dailyWeatherData, int temperatureIncrease, int daysThreshold) {
-        List<List<DailyWeatherData>> result = new ArrayList<>();
-
-        IntStream.range(0, dailyWeatherData.size() - daysThreshold + 1)
-                .forEach(index -> {
-                    boolean isTemperatureIncrease = IntStream.range(1, daysThreshold)
-                            .allMatch(offset -> dailyWeatherData.get(index + offset).getAverageTemperature() >=
-                                    dailyWeatherData.get(index).getAverageTemperature() + temperatureIncrease);
-
-                    if (isTemperatureIncrease) {
-                        List<DailyWeatherData> subList = dailyWeatherData.subList(index, index + daysThreshold);
-                        result.add(new ArrayList<>(subList));
-                    }
-                });
-
-        return result;
+    @Test
+    public void saveToExcel() {
+        productService.saveToExcel();
     }
+
 }
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
-public class WeatherServiceTest {
+public class UserServiceTest {
+
+    @Autowired
+    private UserService userService;
 
     @Test
-    @DisplayName("Визначте дні, в які температура зросла на щонайменше 5°C протягом 5 послідовних днів.")
-    public void getTemperatureIncreaseSequences() {
-
-        List<List<DailyWeatherData>> daysWithConsecutivePrecipitation = weatherService.getTemperatureIncreaseSequences(WeatherDataConverter.convertWeatherDataHourToWeatherDataDaily(hourWeatherDataFromDb), 5, 5);
-
-        daysWithConsecutivePrecipitation.forEach(x -> {
-            System.out.println("-------------");
-            x.forEach(System.out::println);
-        });
+    public void getUsersFromApi() {
+        assertNotNull(userService.getUsersFromApi());
     }
-}
-```
-
-## Phase 3: Aggregation and summary statistics
-
-### Calculate the global average temperature, humidity and precipitation for each month.
-
-```java
-
-@Service
-public class WeatherService {
-
-    public List<MonthWeatherData> getMonthlyStats(List<HourWeatherData> hourWeatherData) {
-        return convertWeatherDataHourToWeatherDataMonth(hourWeatherData);
-    }
-}
-
-@RunWith(SpringRunner.class)
-@SpringBootTest
-public class WeatherServiceTest {
 
     @Test
-    @DisplayName("Розрахуйте середню глобальну температуру, вологість та рівень опадів для кожного місяця.")
-    public void getMonthlyStats() {
-        List<MonthWeatherData> monthWeatherDataStats = weatherService.getMonthlyStats(hourWeatherDataFromDb);
-        monthWeatherDataStats.forEach(System.out::println);
+    public void saveToExcel() {
+        userService.saveToExcel();
     }
-}
-```
 
-### Identify the month with the highest average wind speed.
-
-```java
-
-@Service
-public class WeatherService {
-
-    public MonthWeatherData getMonthWithHighestAverageWindSpeed(List<HourWeatherData> hourWeatherData) {
-        return convertWeatherDataHourToWeatherDataMonth(hourWeatherData).stream()
-                .max(Comparator.comparing(MonthWeatherData::getAverageWindSpeed))
-                .orElseThrow();
-    }
 }
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-public class WeatherServiceTest {
-
-    @Test
-    @DisplayName("Визначте місяць з найвищою середньою швидкістю вітру.")
-    public void getMonthWithHighestAverageWindSpeed() {
-        System.out.println(weatherService.getMonthWithHighestAverageWindSpeed(hourWeatherDataFromDb));
-    }
-}
 ```
 
 # Conclusion
 
-As a result of this lab, we successfully learned and implemented Java Streams to interact with the global weather API.
-They successfully completed the task of analyzing extreme weather conditions, recognizing patterns and calculating
-aggregated statistical indicators. The use of functional programming in Java made it possible to conveniently and
-efficiently process a large amount of meteorological data, ensuring convenience and readability of the code.
+In the course of studying the basics of Java IO and interacting with web APIs, we managed to gain a deeper understanding
+of working with the file system and interacting with web servers. Learning the process of creating Excel files turned
+out to be useful for working with tabular data. The acquired skills expand our potential to develop programs that use
+input-output facilities and interaction with external services. Overall, this experience improved our Java programming
+skills, making our projects more colorful and functional.
 
