@@ -45,20 +45,20 @@ public class Main {
         for (int hall = 0; hall < CINEMA.length; hall++) {
             System.out.println("Hall " + (hall + 1) + ":");
 
-            System.out.print("       ");
+            System.out.print("     ");
             for (int seatNum = 1; seatNum <= CINEMA[1][0].length; seatNum++) {
                 System.out.printf("%-4d", seatNum);
             }
             System.out.println();
 
-            System.out.print("       ");
+            System.out.print("     ");
             for (int seatNum = 1; seatNum <= CINEMA[1][0].length; seatNum++) {
                 System.out.print("__  ");
             }
             System.out.println();
 
             for (int row = 0; row < CINEMA[hall].length; row++) {
-                System.out.printf(" %-2d: | ", (row + 1));
+                System.out.printf(" %-2d| ", (row + 1));
 
                 for (int seat = 0; seat < CINEMA[hall][row].length; seat++) {
                     System.out.printf("%-4d", CINEMA[hall][row][seat]);
